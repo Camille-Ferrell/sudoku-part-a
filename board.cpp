@@ -192,6 +192,46 @@ void board::print()
    cout << endl;
 }
 
+// ********* Prints Conflicts as numbers ***************************
+void board::printConflicts()
+// Prints the conflicts at their specific positions.
+{
+    cout << "Row Conflicts:" << endl;
+    for (int i = 1; i <= BoardSize; ++i) {
+        cout << "Row " << i << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (rowConflicts[i][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+
+    cout << "Column Conflicts:" << endl;
+    for (int j = 1; j <= BoardSize; ++j) {
+        cout << "Column " << j << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (colConflicts[j][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+
+    cout << "Square Conflicts:" << endl;
+    for (int k = 1; k <= BoardSize; ++k) {
+        cout << "Square " << k << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (squareConflicts[k][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+}
+
+//******** Prints Conflicts on Grid ************
+/*
 void board::printConflicts()
 // Prints the conflicts.
 {
@@ -219,7 +259,7 @@ void board::printConflicts()
       cout << endl;
    }
 }
-
+*/
 bool board::fullySolved()
 // Checks if the board is fully solved.
 {
