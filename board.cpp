@@ -15,7 +15,7 @@ The average calculator does not work exactly as planned, I've tried to trouble s
 */
 
 
-/* PART B WORKS BUT THE AVERAGE CALCULATOR ISNT WORKING */
+/* PART B WORKS BUT THE AVERAGE CALCULATOR ISNT WORKING PROPERLY */
 #include <iostream>
 #include <fstream>
 #include <vector>
