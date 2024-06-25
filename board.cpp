@@ -1,3 +1,21 @@
+/*
+Camille, Sebastian, and James
+Project #3 Part B
+
+This file contains the implementation of Part B of this project, and Part A as well
+There are 5 options and each corresponds to which file to read in and then the board is solved
+Option 1: sudoku1.txt
+Option 2: sudoku2.txt
+Option 3: sudoku3.txt
+Option 4: sudoku.txt (multiple boards)
+Option 5: sudoku1-3.txt (multiple boards)
+
+The solved board(s) is(are) then printed along with the number of recursive calls
+The average calculator does not work exactly as planned, I've tried to trouble shoot but its not working as designed
+*/
+
+
+/* PART B WORKS BUT THE AVERAGE CALCULATOR ISNT WORKING */
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -17,27 +35,27 @@ const int MaxValue = 9;
 
 class board {
 public:
-    board();
-    void clear();
-    void initialize(ifstream& fin);
-    void print();
-    bool isBlank(int i, int j);
-    ValueType getCell(int i, int j);
-    void printConflicts();
-    bool solve();
-    bool checkConflicts(int i, int j, ValueType val);
-    void setCell(int i, int j, ValueType val);
-    void resetCell(int i, int j);
+    board(); // constructor
+    void clear(); // clear the board
+    void initialize(ifstream& fin); // initialize the board with values from each file
+    void print(); // print the board
+    bool isBlank(int i, int j); // check if a cell is blank
+    ValueType getCell(int i, int j); // get the value of a cell
+    void printConflicts(); // print conflicts in rows, columns, adn sqaures
+    bool solve(); // solve the board using backtracking
+    bool checkConflicts(int i, int j, ValueType val); // check if placing a value creates conflicts
+    void setCell(int i, int j, ValueType val); // set a cell to a value
+    void resetCell(int i, int j); // reset a cell to blank
 
 private:
-    matrix<ValueType> value;
-    vector<vector<bool>> rowConflicts;
-    vector<vector<bool>> colConflicts;
-    vector<vector<bool>> squareConflicts;
-    int recursiveCalls;
+    matrix<ValueType> value; // matrix to store the board values
+    vector<vector<bool>> rowConflicts; // track conflicts in rows
+    vector<vector<bool>> colConflicts; // track conflicts in columns
+    vector<vector<bool>> squareConflicts; // track conflicts in squares
+    int recursiveCalls; // count the number of recursive calls
 
-    void updateConflicts(int i, int j, ValueType val, bool conflict);
-    bool solveRecursive();
+    void updateConflicts(int i, int j, ValueType val, bool conflict); // update the conflict trackers
+    bool solveRecursive(); // recursive function to solve the board
 };
 
 board::board() : value(BoardSize + 1, BoardSize + 1) {
@@ -45,17 +63,20 @@ board::board() : value(BoardSize + 1, BoardSize + 1) {
 }
 
 void board::clear() {
+   // set all cells to blank
     for (int i = 1; i <= BoardSize; ++i) {
         for (int j = 1; j <= BoardSize; ++j) {
             value[i][j] = Blank;
         }
     }
+    // initialize conflict trackers
     rowConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
     colConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
     squareConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
     recursiveCalls = 0;
 }
 
+// initialize the board with values from a file
 void board::initialize(ifstream& fin) {
     char ch;
     clear();
@@ -70,6 +91,7 @@ void board::initialize(ifstream& fin) {
     }
 }
 
+// print the board
 void board::print() {
     for (int i = 1; i <= BoardSize; ++i) {
         if ((i - 1) % SquareSize == 0) {
@@ -101,10 +123,12 @@ void board::print() {
     cout << endl;
 }
 
+// check if a cell is blank
 bool board::isBlank(int i, int j) {
     return (getCell(i, j) == Blank);
 }
 
+// get the value of a cell
 ValueType board::getCell(int i, int j) {
     if (i < 1 || i > BoardSize || j < 1 || j > BoardSize) {
         throw rangeError("getCell: invalid index");
@@ -112,6 +136,7 @@ ValueType board::getCell(int i, int j) {
     return value[i][j];
 }
 
+// print conflicts in rows, columns, and sqaures (not used in part b)
 void board::printConflicts() {
     cout << "Row Conflicts:" << endl;
     for (int i = 1; i <= BoardSize; ++i) {
@@ -147,22 +172,26 @@ void board::printConflicts() {
     }
 }
 
+// check if placing a value creates conflicts
 bool board::checkConflicts(int i, int j, ValueType val) {
     int square = SquareSize * ((i - 1) / SquareSize) + (j - 1) / SquareSize + 1;
     return rowConflicts[i][val] || colConflicts[j][val] || squareConflicts[square][val];
 }
 
+// set a cell to a value
 void board::setCell(int i, int j, ValueType val) {
     value[i][j] = val;
     updateConflicts(i, j, val, true);
 }
 
+// reset a cell to blank
 void board::resetCell(int i, int j) {
     int val = value[i][j];
     value[i][j] = Blank;
     updateConflicts(i, j, val, false);
 }
 
+// update conflict trackers
 void board::updateConflicts(int i, int j, ValueType val, bool conflict) {
     int square = SquareSize * ((i - 1) / SquareSize) + (j - 1) / SquareSize + 1;
     rowConflicts[i][val] = conflict;
@@ -170,6 +199,7 @@ void board::updateConflicts(int i, int j, ValueType val, bool conflict) {
     squareConflicts[square][val] = conflict;
 }
 
+// solve the board using backtracking
 bool board::solve() {
     recursiveCalls = 0;
     bool solved = solveRecursive();
@@ -177,6 +207,7 @@ bool board::solve() {
     return solved;
 }
 
+// recursive function to solve the board
 bool board::solveRecursive() {
     ++recursiveCalls;
 
@@ -202,6 +233,7 @@ bool board::solveRecursive() {
 int main() {
     ifstream fin;
     int fileNumber;
+    // List of file names to read from
     vector<string> files = {"sudoku1.txt", "sudoku2.txt", "sudoku3.txt", "sudoku.txt", "sudoku1-3.txt"};
 
     while (true) {
@@ -225,6 +257,7 @@ int main() {
 
         try {
             board b;
+            // read and solve each board in the file (if applicable)
             while (fin && fin.peek() != 'Z') {
                 b.initialize(fin);
                 b.print();
@@ -244,7 +277,7 @@ int main() {
 
         fin.close();
 
-        if (numBoards > 0) {
+        if (numBoards >= 1) {
             cout << "Total number of recursive calls: " << totalRecursiveCalls << endl;
             cout << "Average number of recursive calls: " << totalRecursiveCalls / numBoards << endl;
         }
