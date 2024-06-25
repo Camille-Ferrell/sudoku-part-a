@@ -1,4 +1,538 @@
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include "d_matrix.h"
+#include "d_except.h"
+
+using namespace std;
+
+typedef int ValueType; // The type of the value in a cell
+const int Blank = -1;  // Indicates that a cell is blank
+
+const int SquareSize = 3;  // The number of cells in a small square
+const int BoardSize = SquareSize * SquareSize;
+const int MinValue = 1;
+const int MaxValue = 9;
+
+class board {
+public:
+    board();
+    void clear();
+    void initialize(ifstream& fin);
+    void print();
+    bool isBlank(int i, int j);
+    ValueType getCell(int i, int j);
+    void printConflicts();
+    bool solve();
+    bool checkConflicts(int i, int j, ValueType val);
+    void setCell(int i, int j, ValueType val);
+    void resetCell(int i, int j);
+
+private:
+    matrix<ValueType> value;
+    vector<vector<bool>> rowConflicts;
+    vector<vector<bool>> colConflicts;
+    vector<vector<bool>> squareConflicts;
+    int recursiveCalls;
+
+    void updateConflicts(int i, int j, ValueType val, bool conflict);
+    bool solveRecursive();
+};
+
+board::board() : value(BoardSize + 1, BoardSize + 1) {
+    clear();
+}
+
+void board::clear() {
+    for (int i = 1; i <= BoardSize; ++i) {
+        for (int j = 1; j <= BoardSize; ++j) {
+            value[i][j] = Blank;
+        }
+    }
+    rowConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
+    colConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
+    squareConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
+    recursiveCalls = 0;
+}
+
+void board::initialize(ifstream& fin) {
+    char ch;
+    clear();
+
+    for (int i = 1; i <= BoardSize; ++i) {
+        for (int j = 1; j <= BoardSize; ++j) {
+            fin >> ch;
+            if (ch != '.') {
+                setCell(i, j, ch - '0');
+            }
+        }
+    }
+}
+
+void board::print() {
+    for (int i = 1; i <= BoardSize; ++i) {
+        if ((i - 1) % SquareSize == 0) {
+            cout << " -";
+            for (int j = 1; j <= BoardSize; ++j) {
+                cout << "---";
+            }
+            cout << "-";
+            cout << endl;
+        }
+        for (int j = 1; j <= BoardSize; ++j) {
+            if ((j - 1) % SquareSize == 0) {
+                cout << "|";
+            }
+            if (!isBlank(i, j)) {
+                cout << " " << getCell(i, j) << " ";
+            } else {
+                cout << "   ";
+            }
+        }
+        cout << "|";
+        cout << endl;
+    }
+    cout << " -";
+    for (int j = 1; j <= BoardSize; ++j) {
+        cout << "---";
+    }
+    cout << "-";
+    cout << endl;
+}
+
+bool board::isBlank(int i, int j) {
+    return (getCell(i, j) == Blank);
+}
+
+ValueType board::getCell(int i, int j) {
+    if (i < 1 || i > BoardSize || j < 1 || j > BoardSize) {
+        throw rangeError("getCell: invalid index");
+    }
+    return value[i][j];
+}
+
+void board::printConflicts() {
+    cout << "Row Conflicts:" << endl;
+    for (int i = 1; i <= BoardSize; ++i) {
+        cout << "Row " << i << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (rowConflicts[i][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+
+    cout << "Column Conflicts:" << endl;
+    for (int j = 1; j <= BoardSize; ++j) {
+        cout << "Column " << j << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (colConflicts[j][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+
+    cout << "Square Conflicts:" << endl;
+    for (int k = 1; k <= BoardSize; ++k) {
+        cout << "Square " << k << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (squareConflicts[k][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+}
+
+bool board::checkConflicts(int i, int j, ValueType val) {
+    int square = SquareSize * ((i - 1) / SquareSize) + (j - 1) / SquareSize + 1;
+    return rowConflicts[i][val] || colConflicts[j][val] || squareConflicts[square][val];
+}
+
+void board::setCell(int i, int j, ValueType val) {
+    value[i][j] = val;
+    updateConflicts(i, j, val, true);
+}
+
+void board::resetCell(int i, int j) {
+    int val = value[i][j];
+    value[i][j] = Blank;
+    updateConflicts(i, j, val, false);
+}
+
+void board::updateConflicts(int i, int j, ValueType val, bool conflict) {
+    int square = SquareSize * ((i - 1) / SquareSize) + (j - 1) / SquareSize + 1;
+    rowConflicts[i][val] = conflict;
+    colConflicts[j][val] = conflict;
+    squareConflicts[square][val] = conflict;
+}
+
+bool board::solve() {
+    recursiveCalls = 0;
+    bool solved = solveRecursive();
+    cout << "Number of recursive calls: " << recursiveCalls << endl;
+    return solved;
+}
+
+bool board::solveRecursive() {
+    ++recursiveCalls;
+
+    for (int i = 1; i <= BoardSize; ++i) {
+        for (int j = 1; j <= BoardSize; ++j) {
+            if (isBlank(i, j)) {
+                for (int val = MinValue; val <= MaxValue; ++val) {
+                    if (!checkConflicts(i, j, val)) {
+                        setCell(i, j, val);
+                        if (solveRecursive()) {
+                            return true;
+                        }
+                        resetCell(i, j);
+                    }
+                }
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+int main() {
+    ifstream fin;
+    int fileNumber;
+    vector<string> files = {"sudoku1.txt", "sudoku2.txt", "sudoku3.txt", "sudoku.txt", "sudoku1-3.txt"};
+
+    while (true) {
+        cout << "Enter the file number (1, 2, 3, 4, or 5): ";
+        cin >> fileNumber;
+
+        if (fileNumber < 1 || fileNumber > 5) {
+            cout << "Invalid file number. Please enter 1, 2, 3, 4, or 5." << endl;
+            continue;
+        }
+
+        string fileName = files[fileNumber - 1];
+        fin.open(fileName);
+        if (!fin) {
+            cerr << "Cannot open " << fileName << endl;
+            return 1;
+        }
+
+        int totalRecursiveCalls = 0;
+        int numBoards = 0;
+
+        try {
+            board b;
+            while (fin && fin.peek() != 'Z') {
+                b.initialize(fin);
+                b.print();
+                if (b.solve()) {
+                    cout << "Solved board:" << endl;
+                    b.print();
+                } else {
+                    cout << "No solution exists for this board." << endl;
+                }
+                totalRecursiveCalls += b.solve();
+                ++numBoards;
+            }
+        } catch (indexRangeError &ex) {
+            cout << ex.what() << endl;
+            return 1;
+        }
+
+        fin.close();
+
+        if (numBoards > 0) {
+            cout << "Total number of recursive calls: " << totalRecursiveCalls << endl;
+            cout << "Average number of recursive calls: " << totalRecursiveCalls / numBoards << endl;
+        }
+
+        char choice;
+        cout << "Do you want to process another file? (y/n): ";
+        cin >> choice;
+
+        if (choice != 'y' && choice != 'Y') {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+
+
+/* PART B BUT NOT DONE *********************************
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include "d_matrix.h"
+#include "d_except.h"
+
+using namespace std;
+
+typedef int ValueType; // The type of the value in a cell
+const int Blank = -1;  // Indicates that a cell is blank
+
+const int SquareSize = 3;  // The number of cells in a small square
+const int BoardSize = SquareSize * SquareSize;
+const int MinValue = 1;
+const int MaxValue = 9;
+
+class board {
+public:
+    board();
+    void clear();
+    void initialize(ifstream& fin);
+    void print();
+    bool isBlank(int i, int j);
+    ValueType getCell(int i, int j);
+    void printConflicts();
+    bool solve();
+    bool checkConflicts(int i, int j, ValueType val);
+    void setCell(int i, int j, ValueType val);
+    void resetCell(int i, int j);
+
+private:
+    matrix<ValueType> value;
+    vector<vector<bool>> rowConflicts;
+    vector<vector<bool>> colConflicts;
+    vector<vector<bool>> squareConflicts;
+    int recursiveCalls;
+
+    void updateConflicts(int i, int j, ValueType val, bool conflict);
+    bool solveRecursive();
+};
+
+board::board() : value(BoardSize + 1, BoardSize + 1) {
+    clear();
+}
+
+void board::clear() {
+    for (int i = 1; i <= BoardSize; ++i) {
+        for (int j = 1; j <= BoardSize; ++j) {
+            value[i][j] = Blank;
+        }
+    }
+    rowConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
+    colConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
+    squareConflicts.assign(BoardSize + 1, vector<bool>(MaxValue + 1, false));
+    recursiveCalls = 0;
+}
+
+void board::initialize(ifstream& fin) {
+    char ch;
+    clear();
+
+    for (int i = 1; i <= BoardSize; ++i) {
+        for (int j = 1; j <= BoardSize; ++j) {
+            fin >> ch;
+            if (ch != '.') {
+                setCell(i, j, ch - '0');
+            }
+        }
+    }
+}
+
+void board::print() {
+    for (int i = 1; i <= BoardSize; ++i) {
+        if ((i - 1) % SquareSize == 0) {
+            cout << " -";
+            for (int j = 1; j <= BoardSize; ++j) {
+                cout << "---";
+            }
+            cout << "-";
+            cout << endl;
+        }
+        for (int j = 1; j <= BoardSize; ++j) {
+            if ((j - 1) % SquareSize == 0) {
+                cout << "|";
+            }
+            if (!isBlank(i, j)) {
+                cout << " " << getCell(i, j) << " ";
+            } else {
+                cout << "   ";
+            }
+        }
+        cout << "|";
+        cout << endl;
+    }
+    cout << " -";
+    for (int j = 1; j <= BoardSize; ++j) {
+        cout << "---";
+    }
+    cout << "-";
+    cout << endl;
+}
+
+bool board::isBlank(int i, int j) {
+    return (getCell(i, j) == Blank);
+}
+
+ValueType board::getCell(int i, int j) {
+    if (i < 1 || i > BoardSize || j < 1 || j > BoardSize) {
+        throw rangeError("getCell: invalid index");
+    }
+    return value[i][j];
+}
+
+void board::printConflicts() {
+    cout << "Row Conflicts:" << endl;
+    for (int i = 1; i <= BoardSize; ++i) {
+        cout << "Row " << i << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (rowConflicts[i][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+
+    cout << "Column Conflicts:" << endl;
+    for (int j = 1; j <= BoardSize; ++j) {
+        cout << "Column " << j << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (colConflicts[j][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+
+    cout << "Square Conflicts:" << endl;
+    for (int k = 1; k <= BoardSize; ++k) {
+        cout << "Square " << k << ": ";
+        for (int val = MinValue; val <= MaxValue; ++val) {
+            if (squareConflicts[k][val]) {
+                cout << val << " ";
+            }
+        }
+        cout << endl;
+    }
+}
+
+bool board::checkConflicts(int i, int j, ValueType val) {
+    int square = SquareSize * ((i - 1) / SquareSize) + (j - 1) / SquareSize + 1;
+    return rowConflicts[i][val] || colConflicts[j][val] || squareConflicts[square][val];
+}
+
+void board::setCell(int i, int j, ValueType val) {
+    value[i][j] = val;
+    updateConflicts(i, j, val, true);
+}
+
+void board::resetCell(int i, int j) {
+    int val = value[i][j];
+    value[i][j] = Blank;
+    updateConflicts(i, j, val, false);
+}
+
+void board::updateConflicts(int i, int j, ValueType val, bool conflict) {
+    int square = SquareSize * ((i - 1) / SquareSize) + (j - 1) / SquareSize + 1;
+    rowConflicts[i][val] = conflict;
+    colConflicts[j][val] = conflict;
+    squareConflicts[square][val] = conflict;
+}
+
+bool board::solve() {
+    recursiveCalls = 0;
+    bool solved = solveRecursive();
+    cout << "Number of recursive calls: " << recursiveCalls << endl;
+    return solved;
+}
+
+bool board::solveRecursive() {
+    ++recursiveCalls;
+
+    for (int i = 1; i <= BoardSize; ++i) {
+        for (int j = 1; j <= BoardSize; ++j) {
+            if (isBlank(i, j)) {
+                for (int val = MinValue; val <= MaxValue; ++val) {
+                    if (!checkConflicts(i, j, val)) {
+                        setCell(i, j, val);
+                        if (solveRecursive()) {
+                            return true;
+                        }
+                        resetCell(i, j);
+                    }
+                }
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+int main() {
+    ifstream fin;
+    int fileNumber;
+    vector<string> files = {"sudoku1.txt", "sudoku2.txt", "sudoku3.txt"};
+
+    while (true) {
+        cout << "Enter the file number (1, 2, or 3): ";
+        cin >> fileNumber;
+
+        if (fileNumber < 1 || fileNumber > 3) {
+            cout << "Invalid file number. Please enter 1, 2, or 3." << endl;
+            continue;
+        }
+
+        string fileName = files[fileNumber - 1];
+        fin.open(fileName);
+        if (!fin) {
+            cerr << "Cannot open " << fileName << endl;
+            return 1;
+        }
+
+        int totalRecursiveCalls = 0;
+        int numBoards = 0;
+
+        try {
+            board b;
+            while (fin && fin.peek() != 'Z') {
+                b.initialize(fin);
+                b.print();
+                if (b.solve()) {
+                    cout << "Solved board:" << endl;
+                    b.print();
+                } else {
+                    cout << "No solution exists for this board." << endl;
+                }
+                totalRecursiveCalls += b.solve();
+                ++numBoards;
+            }
+        } catch (indexRangeError &ex) {
+            cout << ex.what() << endl;
+            return 1;
+        }
+
+        fin.close();
+
+        if (numBoards > 0) {
+            cout << "Average number of recursive calls: " << totalRecursiveCalls / numBoards << endl;
+        }
+
+        char choice;
+        cout << "Do you want to process another file? (y/n): ";
+        cin >> choice;
+
+        if (choice != 'y' && choice != 'Y') {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+
+
+
+
+Part A**********************
+
+#include <iostream>
 #include <limits.h>
 #include "d_matrix.h"
 #include "d_except.h"
@@ -259,7 +793,7 @@ void board::printConflicts()
       cout << endl;
    }
 }
-*/
+
 bool board::fullySolved()
 // Checks if the board is fully solved.
 {
